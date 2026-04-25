@@ -1,0 +1,31 @@
+* { font-family: 'Cairo', sans-serif; box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+:root {
+    --primary: #8B4513;
+    --primary-dark: #654321;
+    --primary-light: #A0522D;
+    --gold: #DAA520;
+    --success: #228B22;
+    --danger: #DC143C;
+    --warning: #FF8C00;
+    --info: #4682B4;
+    --light-bg: #FFF8DC;
+    --card-bg: #FFFAF0;
+}
+body { background: linear-gradient(135deg, #FFF8DC 0%, #FAEBD7 100%); }
+.card-s { box-shadow: 0 10px 40px rgba(139, 69, 19, .15); border: 2px solid rgba(218, 165, 32, .2); }
+.hover-l { transition: all .3s ease; }
+.hover-l:hover { transform: translateY(-4px); box-shadow: 0 15px 40px rgba(139, 69, 19, .25); }
+.grad-h { background: linear-gradient(135deg, #8B4513, #654321, #A0522D); }
+.tab-btn { padding: 10px 20px; border-radius: 12px 12px 0 0; cursor: pointer; font-weight: 700; transition: all .3s; border: 2px solid transparent; border-bottom: none; }
+.tab-btn.active { background: #FFFAF0; color: #8B4513; border-color: rgba(218, 165, 32, .4); }
+.tab-btn:not(.active) { background: rgba(139, 69, 19, .1); color: #654321; }
+.criteria-slider { appearance: none; width: 100%; height: 8px; border-radius: 4px; outline: none; background: #e5d5c0; }
+.criteria-slider::-webkit-slider-thumb { appearance: none; width: 28px; height: 28px; border-radius: 50%; background: var(--primary); cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,.2); }
+select, input { border: 2px solid rgba(218, 165, 32, .3); border-radius: 10px; padding: 10px 14px; font-size: 15px; outline: none; transition: border .3s; }
+select:focus, input:focus { border-color: #DAA520; }
+.toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 9999; padding: 12px 28px; border-radius: 12px; color: #fff; font-weight: 700; animation: slideDown .4s ease; }
+@keyframes slideDown { from { opacity: 0; top: -20px; } to { opacity: 1; top: 20px; } }
+.badge { display: inline-block; padding: 2px 12px; border-radius: 20px; font-size: 12px; font-weight: 700; }
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 999; display: flex; align-items: center; justify-content: center; }
+.perf-bar { height: 20px; border-radius: 10px; transition: width .8s ease; }
