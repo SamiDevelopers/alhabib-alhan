@@ -1,0 +1,836 @@
+<!doctype html>
+<html lang="ar" dir="rtl" class="h-full">
+ <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>نظام تقييم مادة الألحان</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js"></script>
+  <script src="/_sdk/element_sdk.js"></script>
+  <script src="/_sdk/data_sdk.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Kufi+Arabic:wght@400;500;600;700;800&amp;family=Amiri:wght@400;700&amp;display=swap" rel="stylesheet">
+  <style>
+    * { font-family: 'Noto Kufi Arabic', sans-serif; }
+    .amiri { font-family: 'Amiri', serif; }
+    html, body { height: 100%; margin: 0; }
+
+    .app-bg {
+      background: linear-gradient(135deg, #0f1729 0%, #1a1f3a 40%, #2a1a3e 70%, #1a0f29 100%);
+    }
+
+    .glass-card {
+      background: rgba(255,255,255,0.06);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .glass-card-light {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.06);
+    }
+
+    .gold-gradient {
+      background: linear-gradient(135deg, #d4a853, #f0d78c, #c9952e);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .gold-border { border-color: rgba(212,168,83,0.4); }
+    .gold-bg { background: linear-gradient(135deg, #d4a853, #c9952e); }
+
+    .rating-btn {
+      transition: all 0.2s ease;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    .rating-btn:hover { background: rgba(212,168,83,0.2); border-color: rgba(212,168,83,0.4); }
+    .rating-btn.active {
+      background: linear-gradient(135deg, rgba(212,168,83,0.3), rgba(201,149,46,0.3));
+      border-color: #d4a853;
+      color: #f0d78c;
+      box-shadow: 0 0 12px rgba(212,168,83,0.2);
+    }
+
+    .tab-btn {
+      transition: all 0.3s ease;
+      position: relative;
+    }
+    .tab-btn.active::after {
+      content: '';
+      position: absolute;
+      bottom: -1px;
+      left: 20%;
+      right: 20%;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, #d4a853, transparent);
+    }
+
+    select, input {
+      background: rgba(255,255,255,0.05) !important;
+      border: 1px solid rgba(255,255,255,0.15) !important;
+      color: #e2e8f0 !important;
+    }
+    select option { background: #1a1f3a; color: #e2e8f0; }
+
+    .cross-pattern {
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      opacity: 0.04;
+      font-size: 120px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .fade-in { animation: fadeIn 0.4s ease; }
+    @keyframes fadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+
+    .toast-container {
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .toast {
+      padding: 12px 24px;
+      border-radius: 12px;
+      color: white;
+      font-size: 14px;
+      animation: toastIn 0.3s ease, toastOut 0.3s ease 2.7s forwards;
+      backdrop-filter: blur(10px);
+    }
+    .toast-success { background: rgba(34,197,94,0.9); }
+    .toast-error { background: rgba(239,68,68,0.9); }
+    @keyframes toastIn { from { opacity:0; transform:translateY(-20px); } to { opacity:1; transform:translateY(0); } }
+    @keyframes toastOut { to { opacity:0; transform:translateY(-20px); } }
+
+    .spinner { display: inline-block; width: 18px; height: 18px; border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.6s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(212,168,83,0.3); border-radius: 3px; }
+
+    .confirm-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.6);
+      display: flex; align-items: center; justify-content: center; z-index: 9998;
+      animation: fadeIn 0.2s ease;
+    }
+    .confirm-box {
+      background: #1e2340; border: 1px solid rgba(212,168,83,0.3);
+      border-radius: 16px; padding: 24px; max-width: 360px; text-align: center;
+    }
+  </style>
+  <style>body { box-sizing: border-box; }</style>
+ </head>
+ <body class="h-full">
+  <div id="app" class="app-bg h-full w-full overflow-auto text-gray-200">
+   <div class="cross-pattern amiri">
+    ☦
+   </div><!-- Toast container -->
+   <div id="toastContainer" class="toast-container"></div><!-- Confirm dialog container -->
+   <div id="confirmContainer"></div><!-- Header -->
+   <header class="relative z-10 pt-6 pb-4 px-4 text-center">
+    <div class="amiri text-2xl opacity-30 mb-1">
+     ☦
+    </div>
+    <h1 id="mainTitle" class="gold-gradient text-2xl md:text-3xl font-bold mb-1">نظام تقييم مادة الألحان</h1>
+    <p id="churchName" class="text-gray-400 text-sm"></p>
+   </header><!-- Tabs -->
+   <nav class="relative z-10 flex justify-center gap-1 px-4 mb-6 border-b border-white/5 pb-0">
+    <button onclick="switchTab('evaluate')" id="tabEvaluate" class="tab-btn active px-4 py-3 text-sm rounded-t-lg text-yellow-200/80"> <span class="flex items-center gap-2"><i data-lucide="clipboard-check" style="width:16px;height:16px"></i> التقييم</span> </button> <button onclick="switchTab('results')" id="tabResults" class="tab-btn px-4 py-3 text-sm rounded-t-lg text-gray-400"> <span class="flex items-center gap-2"><i data-lucide="bar-chart-3" style="width:16px;height:16px"></i> النتائج</span> </button> <button onclick="switchTab('final')" id="tabFinal" class="tab-btn px-4 py-3 text-sm rounded-t-lg text-gray-400"> <span class="flex items-center gap-2"><i data-lucide="trophy" style="width:16px;height:16px"></i> الدرجات النهائية</span> </button>
+   </nav><!-- Tab: Evaluate -->
+   <div id="panelEvaluate" class="relative z-10 max-w-2xl mx-auto px-4 pb-8 fade-in">
+    <!-- Evaluator Selection -->
+    <div class="glass-card rounded-2xl p-5 mb-4">
+     <label class="block text-xs text-gray-400 mb-2">الخادم المُقيِّم</label> <select id="selEvaluator" class="w-full rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-yellow-600/50"> <option value="">— اختر الخادم —</option> </select>
+    </div><!-- Student Lookup -->
+    <div class="glass-card rounded-2xl p-5 mb-4">
+     <label class="block text-xs text-gray-400 mb-2">كود الدارس</label>
+     <div class="flex gap-2">
+      <input id="inputCode" type="text" placeholder="اكتب كود الدارس" class="flex-1 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-yellow-600/50"> <button onclick="lookupStudent()" class="gold-bg text-gray-900 font-semibold px-5 rounded-xl text-sm hover:opacity-90 transition">بحث</button>
+     </div><!-- Student Info Card -->
+     <div id="studentCard" class="hidden mt-4 glass-card-light rounded-xl p-4 fade-in">
+      <div class="flex items-center gap-3 mb-2">
+       <div class="w-10 h-10 rounded-full gold-bg flex items-center justify-center text-gray-900 font-bold text-lg" id="studentInitial">
+        ?
+       </div>
+       <div>
+        <div id="studentNameDisplay" class="font-semibold text-yellow-100"></div>
+        <div id="studentClassDisplay" class="text-xs text-gray-400"></div>
+       </div>
+      </div>
+      <div id="studentCodeDisplay" class="text-xs text-gray-500"></div>
+     </div>
+    </div><!-- Hymn Selection -->
+    <div id="hymnSection" class="hidden fade-in">
+     <div class="glass-card rounded-2xl p-5 mb-4">
+      <label class="block text-xs text-gray-400 mb-2">اختر اللحن</label> <select id="selHymn" onchange="onHymnSelected()" class="w-full rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-yellow-600/50"> <option value="">— اختر اللحن —</option> </select>
+      <div id="hymnProgress" class="mt-3 text-xs text-gray-500"></div>
+     </div><!-- Rating Criteria -->
+     <div id="ratingSection" class="hidden fade-in">
+      <div class="glass-card rounded-2xl p-5 mb-4 space-y-5" id="criteriaContainer"></div>
+      <div class="glass-card rounded-2xl p-4 mb-4 flex items-center justify-between">
+       <span class="text-sm text-gray-300">مجموع درجة اللحن</span> <span id="hymnTotalDisplay" class="text-2xl font-bold gold-gradient">0 / 10</span>
+      </div><button onclick="submitEvaluation()" id="btnSubmit" class="w-full gold-bg text-gray-900 font-bold py-4 rounded-2xl text-sm hover:opacity-90 transition flex items-center justify-center gap-2"> <i data-lucide="check-circle" style="width:18px;height:18px"></i> حفظ التقييم </button>
+     </div>
+    </div>
+   </div><!-- Tab: Results -->
+   <div id="panelResults" class="relative z-10 max-w-4xl mx-auto px-4 pb-8 hidden">
+    <div class="glass-card rounded-2xl p-5 mb-4">
+     <div class="flex flex-wrap gap-3 mb-4">
+      <select id="filterClass" onchange="renderResults()" class="rounded-xl px-4 py-2 text-sm flex-1 min-w-[140px]"> <option value="">كل الفصول</option> </select> <select id="filterEvaluator" onchange="renderResults()" class="rounded-xl px-4 py-2 text-sm flex-1 min-w-[140px]"> <option value="">كل الخدام</option> </select>
+     </div>
+     <div id="resultsTable" class="overflow-x-auto"></div>
+    </div>
+   </div><!-- Tab: Final Grades -->
+   <div id="panelFinal" class="relative z-10 max-w-4xl mx-auto px-4 pb-8 hidden">
+    <div class="glass-card rounded-2xl p-5 mb-4">
+     <div class="flex flex-wrap gap-3 mb-4">
+      <select id="filterFinalClass" onchange="renderFinalGrades()" class="rounded-xl px-4 py-2 text-sm flex-1 min-w-[140px]"> <option value="">كل الفصول</option> </select>
+     </div>
+     <div id="finalTable" class="overflow-x-auto"></div>
+    </div>
+   </div>
+  </div>
+  <script>
+// ========== DATA ==========
+const EVALUATORS = [
+  'ماريا شوكت', 'ابرام هاني', 'ابانوب ايمن',
+  'بيشوي ملاك', 'مارينا ايهاب', 'مينا عماد'
+];
+
+const HYMNS_BY_CLASS = {
+  'تمهيدي': [
+    'مرد انجيل يونان يوم الاثنين عربي',
+    'التوزيع السنوي عربي',
+    'مرد انجيل ايام الصوم الكبير (تي هيريني)',
+    'تسبحة البصخة (ثوك تي تي جوم)',
+    'هيتنية العذراء',
+    'مرد انجيل عيد القيامة',
+    'اريبرسفافين'
+  ],
+  'أولي وثانية': [
+    'الليلويا اي ايه اي',
+    'نيف سنتى',
+    'لحن اوصنا خين ني اتتشوسي',
+    'اكسيا + أكسيوس التمجيد',
+    'ابؤرو الحزاينى',
+    'تسبحة البصخة (ثوك تي تي جوم)',
+    'مرد مزمور عيد القيامة',
+    'مرد انجيل عيد القيامة'
+  ],
+  'ثالثة ورابعة': [
+    'الليلويا اي ايه اي',
+    'نيف سنتى',
+    'ابؤرو التمجيد',
+    'اكسيا + أكسيوس التمجيد',
+    'ثوك تي تي جوم',
+    'هيتينيات عيد القيامة',
+    'مرد مزمور عيد القيامة',
+    'مرد انجيل عيد القيامة'
+  ],
+  'خامسة وسادسة': [
+    'الليلويا اي ايه اي',
+    'نيف سنتى',
+    'مرد الانجيل جي بينيوت',
+    'مرد الانجيل تي هيرينى',
+    'مفردات الأناجيل أحد الشعانين (أوصانا)',
+    'ثوك تي تي جوم',
+    'ابؤرو الحزاينى',
+    'هيتينيات عيد القيامة',
+    'مرد مزمور عيد القيامة',
+    'مرد انجيل عيد القيامة',
+    'ابؤرو التمجيد'
+  ],
+  'أعدادي - ثانوي': [
+    'الليلويا اي ايه اي',
+    'نيف سنتى',
+    'مرد الانجيل جي بينيوت',
+    'مرد الانجيل تي هيرينى',
+    'مفردات الأناجيل أحد الشعانين (أوصانا)',
+    'ثوك تي تي جوم',
+    'ابؤرو الحزاينى',
+    'هيتينيات عيد القيامة',
+    'مرد مزمور عيد القيامة',
+    'مرد انجيل عيد القيامة',
+    'ابؤرو التمجيد'
+  ],
+  'شباب وخريجين': [
+    'نيف سينتي',
+    'الليلويا اي ايه اي ايخون',
+    'راشي نيه',
+    'ثوك تاتي جوم',
+    'ابورو الحزايني',
+    'مرد المزمور القيامة',
+    'مرد انجيل القيامة'
+  ]
+};
+
+const CLASSES = [
+  'تمهيدي',
+  'أولي وثانية',
+  'ثالثة ورابعة',
+  'خامسة وسادسة',
+  'أعدادي - ثانوي',
+  'شباب وخريجين'
+];
+
+const CRITERIA = [
+  { key: 'melody_mastery', label: 'إتقان اللحن (صحة النغم والإيقاع)', max: 4 },
+  { key: 'vocal_performance', label: 'الأداء الصوتي والنُطق', max: 2 },
+  { key: 'memorization', label: 'الحفظ الغيابي للنص', max: 1 },
+  { key: 'spiritual_understanding', label: 'الفهم والمعنى الروحي للنص', max: 1 },
+  { key: 'occasion_knowledge', label: 'معرفة المناسبة الطقسية', max: 2 }
+];
+
+// Hymns required per class
+const CLASS_HYMN_COUNT = {
+  'تمهيدي': 3,
+  'أولي وثانية': 4,
+  'ثالثة ورابعة': 5,
+  'خامسة وسادسة': 6,
+  'أعدادي - ثانوي': 7,
+  'شباب وخريجين': 7
+};
+
+// Real students data
+const STUDENTS = [
+  { code: 'OQ37UN53', name: 'أوناي مينا اسحق عزيز', class: 'تمهيدي' },
+  { code: 'DL27RQ84', name: 'نوفير جورج ملاك', class: 'تمهيدي' },
+  { code: 'UR28QG18', name: 'ستيفن ابانوب', class: 'تمهيدي' },
+  { code: 'VP93ZY41', name: 'مارلي ماجد جيد', class: 'تمهيدي' },
+  { code: 'NN26MX40', name: 'ميلا بيشوي', class: 'تمهيدي' },
+  { code: 'IM1SA54', name: 'جيوفاني عماد شنوده', class: 'تمهيدي' },
+  { code: 'OW86LY82', name: 'جون رشاد جودة', class: 'تمهيدي' },
+  { code: 'QY3TE65', name: 'كيرلس مرقس', class: 'تمهيدي' },
+  { code: 'OE19DL44', name: 'مارك اشعياء', class: 'تمهيدي' },
+  { code: 'DZ96JL14', name: 'فابيو رويس صموئيل مهني', class: 'تمهيدي' },
+  { code: 'ZE40GR74', name: 'روفانيو روماني', class: 'تمهيدي' },
+  { code: 'LO80OX29', name: 'أوليفر مايكل سليمان', class: 'تمهيدي' },
+  { code: 'DM34TA35', name: 'مارفي رمزي رامى', class: 'تمهيدي' },
+  { code: 'ZW66EH16', name: 'سارة اشرف مهني ذكي', class: 'تمهيدي' },
+  { code: 'VL57GX16', name: 'مارتن امير فارس', class: 'تمهيدي' },
+  { code: 'WX52QV70', name: 'كريس إبرام اشرف', class: 'تمهيدي' },
+  { code: 'DO55ZT7', name: 'ادم ناجي كامل', class: 'تمهيدي' },
+  { code: 'DH82QY48', name: 'نوفير يوسف', class: 'تمهيدي' },
+  { code: 'VK29JM73', name: 'بافلي عماد', class: 'تمهيدي' },
+  { code: 'DA42DK41', name: 'ستيفين سامي عادل', class: 'أولي وثانية' },
+  { code: 'VM46TM77', name: 'بافلي هاني', class: 'أولي وثانية' },
+  { code: 'KU61IA89', name: 'كيفين مايكل', class: 'أولي وثانية' },
+  { code: 'RQ2BH97', name: 'ايلينا ممدوح فوزي', class: 'أولي وثانية' },
+  { code: 'WQ83SO71', name: 'ديفيد عادل مرزوق جاد الله', class: 'أولي وثانية' },
+  { code: 'ET97IL35', name: 'بيير جورج مقار', class: 'أولي وثانية' },
+  { code: 'WY82CX86', name: 'كاراس يعقوب شحاته', class: 'أولي وثانية' },
+  { code: 'BE70UF75', name: 'مينا اشرف', class: 'أولي وثانية' },
+  { code: 'SI22AZ84', name: 'ساندرو بيشوي', class: 'أولي وثانية' },
+  { code: 'UF71FO28', name: 'يسطس وليد', class: 'أولي وثانية' },
+  { code: 'FR59WU74', name: 'جاستين روماني', class: 'أولي وثانية' },
+  { code: 'MF6XN77', name: 'بارثينيا وليد يني', class: 'أولي وثانية' },
+  { code: 'WX20CV21', name: 'بركتاويت مكونان', class: 'أولي وثانية' },
+  { code: 'UZ26PB64', name: 'جوسبين نادر', class: 'أولي وثانية' },
+  { code: 'AV34FF98', name: 'هيفين مينا مجدي', class: 'أولي وثانية' },
+  { code: 'YF40AC91', name: 'ماريا البيرت نجيب', class: 'أولي وثانية' },
+  { code: 'ZG87AO32', name: 'يوسف ناجي كامل', class: 'أولي وثانية' },
+  { code: 'CO95IJ79', name: 'انطونيوس نادر رزق ايوب', class: 'ثالثة ورابعة' },
+  { code: 'SR36NT37', name: 'مهرائيل يسري كامل متي', class: 'ثالثة ورابعة' },
+  { code: 'ZH50CV31', name: 'مارفينا مينا', class: 'ثالثة ورابعة' },
+  { code: 'KO83OS59', name: 'مجدي إبراهيم يونان إبراهيم', class: 'ثالثة ورابعة' },
+  { code: 'IP54IC67', name: 'كيفين عماد', class: 'ثالثة ورابعة' },
+  { code: 'PK99WL91', name: 'مينا تامر بدير', class: 'ثالثة ورابعة' },
+  { code: 'EL80FZ96', name: 'ادم إبراهيم حلمي', class: 'ثالثة ورابعة' },
+  { code: 'WU49YX64', name: 'ماثيو بهاء لطيف', class: 'ثالثة ورابعة' },
+  { code: 'ZL57VZ65', name: 'قدوس مكنن', class: 'ثالثة ورابعة' },
+  { code: 'WL17KB22', name: 'ويني صقاي محاري', class: 'ثالثة ورابعة' },
+  { code: 'FF56ZG4', name: 'مريم مجدي يعقوي', class: 'ثالثة ورابعة' },
+  { code: 'UT78DS90', name: 'ستيفن امير فارس', class: 'ثالثة ورابعة' },
+  { code: 'YS59WG63', name: 'نوفير البيرت نجيب', class: 'ثالثة ورابعة' },
+  { code: 'EZ37JO93', name: 'بتول ملاك ملاك', class: 'ثالثة ورابعة' },
+  { code: 'WL54JD66', name: 'دانيال ميخائيل فؤاد', class: 'خامسة وسادسة' },
+  { code: 'ET27TH21', name: 'جاسيكا اسامه', class: 'خامسة وسادسة' },
+  { code: 'UZ36JX61', name: 'كاراس اسامه', class: 'خامسة وسادسة' },
+  { code: 'QN26EA60', name: 'ابراهيم مجدي ابراهيم', class: 'خامسة وسادسة' },
+  { code: 'DF93MK67', name: 'توماس مايكل', class: 'خامسة وسادسة' },
+  { code: 'XW65UC49', name: 'مريم نادر رزق ايوب', class: 'خامسة وسادسة' },
+  { code: 'SD53WB49', name: 'بولا نادر رزق ايوب', class: 'خامسة وسادسة' },
+  { code: 'ND12LG2', name: 'مريم فوزي', class: 'خامسة وسادسة' },
+  { code: 'UT11DC93', name: 'نوفير يسري كامل متي', class: 'خامسة وسادسة' },
+  { code: 'TA28AE14', name: 'مايفن جرجس ظريف', class: 'خامسة وسادسة' },
+  { code: 'SP2GW49', name: 'ليزا عماد شنوده', class: 'خامسة وسادسة' },
+  { code: 'JW61SG99', name: 'مريم فادي اشرف', class: 'خامسة وسادسة' },
+  { code: 'JK34BT99', name: 'ستيفين عماد', class: 'خامسة وسادسة' },
+  { code: 'RG61SQ70', name: 'بارثينيا ناصر', class: 'خامسة وسادسة' },
+  { code: 'RC33XF38', name: 'ماروسكا مجدي', class: 'خامسة وسادسة' },
+  { code: 'OC37CU76', name: 'ليدو مكونان', class: 'خامسة وسادسة' },
+  { code: 'CO49CX8', name: 'هولي مينا مجدي', class: 'خامسة وسادسة' },
+  { code: 'YC54NA24', name: 'كيرلس يوسف شحاتة', class: 'أعدادي - ثانوي' },
+  { code: 'VA86MB94', name: 'ابانوب سامي فواد فهيم', class: 'أعدادي - ثانوي' },
+  { code: 'PW68PL46', name: 'ريني مجدي', class: 'أعدادي - ثانوي' },
+  { code: 'VR96WT51', name: 'يوستينا مجدي ابراهيم', class: 'أعدادي - ثانوي' },
+  { code: 'BY39JB7', name: 'بهجت وليد', class: 'أعدادي - ثانوي' },
+  { code: 'DE9SC28', name: 'مريم رضا', class: 'أعدادي - ثانوي' },
+  { code: 'IX26AL86', name: 'يوسف نادر رزق ايوب', class: 'أعدادي - ثانوي' },
+  { code: 'BW43HD36', name: 'كاراس فادي اشرف سمير', class: 'أعدادي - ثانوي' },
+  { code: 'DM79JA6', name: 'مارك مينا', class: 'أعدادي - ثانوي' },
+  { code: 'GC54AC11', name: 'بافلي جرجس', class: 'أعدادي - ثانوي' },
+  { code: 'GS37KY45', name: 'جوليانا ميلاد يعقوب', class: 'أعدادي - ثانوي' },
+  { code: 'FR86EO8', name: 'بتليهم مكنن', class: 'أعدادي - ثانوي' },
+  { code: 'QH17LK76', name: 'جيسي فليب فارس', class: 'أعدادي - ثانوي' },
+  { code: 'XZ58OL41', name: 'مايفن ميلاد محروس', class: 'أعدادي - ثانوي' },
+  { code: 'PS24OD68', name: 'مارتن ماجد فوزي', class: 'أعدادي - ثانوي' },
+  { code: 'BN77OF53', name: 'چورچ امير', class: 'أعدادي - ثانوي' },
+  { code: 'GF19LG39', name: 'بولا نزية', class: 'أعدادي - ثانوي' },
+  { code: 'OV92PQ79', name: 'رجاء عوني حبيب', class: 'شباب وخريجين' },
+  { code: 'JF16CY59', name: 'وائل فتحي جرجس', class: 'شباب وخريجين' },
+  { code: 'NC50EL52', name: 'راعوث فايز قديس', class: 'شباب وخريجين' },
+  { code: 'HV44PA32', name: 'ماجد بشاي حبيب', class: 'شباب وخريجين' },
+  { code: 'PH70TQ73', name: 'ماريانا كمال شوقي', class: 'شباب وخريجين' },
+  { code: 'OT23PH54', name: 'نانسي نجاح', class: 'شباب وخريجين' },
+  { code: 'BD65HH16', name: 'بيشوي ملاك', class: 'شباب وخريجين' },
+  { code: 'EK94VH97', name: 'ساندي ممدوح عطالله', class: 'شباب وخريجين' },
+  { code: 'GD79IA22', name: 'روبير ريمون جاب الله', class: 'شباب وخريجين' },
+  { code: 'YK76PZ32', name: 'رامز ريمون جاب الله', class: 'شباب وخريجين' },
+  { code: 'UK49EE4', name: 'ثروت عدلي شفيق', class: 'شباب وخريجين' },
+  { code: 'NI94WK25', name: 'ابانوب اشرف زكري', class: 'شباب وخريجين' },
+  { code: 'VW75WS5', name: 'صوفيا هاني يوسف', class: 'شباب وخريجين' },
+  { code: 'ZW70YJ78', name: 'ماريا فرج', class: 'شباب وخريجين' },
+  { code: 'DV75CW75', name: 'سماح انور', class: 'شباب وخريجين' },
+  { code: 'PT32IX97', name: 'راندا صبري كامل', class: 'شباب وخريجين' },
+  { code: 'PR96UL34', name: 'كريستين ميلاد', class: 'شباب وخريجين' },
+  { code: 'TO77VI91', name: 'ايهاب عادل انور', class: 'شباب وخريجين' },
+  { code: 'LE83EJ67', name: 'عطيه عشم شفيق', class: 'شباب وخريجين' },
+  { code: 'HL86TE25', name: 'مريم ابراهيم', class: 'شباب وخريجين' },
+  { code: 'IE72AQ20', name: 'نرمين فوزي', class: 'شباب وخريجين' },
+  { code: 'OZ16CH73', name: 'ماريان فوزي', class: 'شباب وخريجين' },
+  { code: 'DW46RO7', name: 'مريم ناجي سمعان', class: 'شباب وخريجين' },
+  { code: 'IK91IZ66', name: 'ناديه شلبي بشاي', class: 'شباب وخريجين' },
+  { code: 'FZ64SZ56', name: 'يوسف اسحاق', class: 'شباب وخريجين' },
+];
+
+// ========== STATE ==========
+let allRecords = [];
+let currentStudent = null;
+let currentRatings = {};
+let isSubmitting = false;
+
+// ========== INIT ==========
+const defaultConfig = {
+  app_title: 'نظام تقييم مادة الألحان',
+  church_name: '',
+  background_color: '#0f1729',
+  surface_color: 'rgba(255,255,255,0.06)',
+  text_color: '#e2e8f0',
+  primary_action_color: '#d4a853',
+  secondary_action_color: '#94a3b8',
+  font_family: 'Noto Kufi Arabic',
+  font_size: 14
+};
+
+window.elementSdk.init({
+  defaultConfig,
+  onConfigChange: async (config) => {
+    const t = config.app_title || defaultConfig.app_title;
+    const c = config.church_name || defaultConfig.church_name;
+    const f = config.font_family || defaultConfig.font_family;
+    const fs = config.font_size || defaultConfig.font_size;
+
+    document.getElementById('mainTitle').textContent = t;
+    document.getElementById('churchName').textContent = c;
+
+    document.querySelectorAll('h1,h2,h3,p,span,div,button,select,input,label,td,th').forEach(el => {
+      if (!el.classList.contains('amiri')) {
+        el.style.fontFamily = `${f}, 'Noto Kufi Arabic', sans-serif`;
+      }
+    });
+  },
+  mapToCapabilities: (config) => ({
+    recolorables: [
+      { get: () => config.background_color || defaultConfig.background_color, set: v => { config.background_color = v; window.elementSdk.setConfig({ background_color: v }); } },
+      { get: () => config.surface_color || defaultConfig.surface_color, set: v => { config.surface_color = v; window.elementSdk.setConfig({ surface_color: v }); } },
+      { get: () => config.text_color || defaultConfig.text_color, set: v => { config.text_color = v; window.elementSdk.setConfig({ text_color: v }); } },
+      { get: () => config.primary_action_color || defaultConfig.primary_action_color, set: v => { config.primary_action_color = v; window.elementSdk.setConfig({ primary_action_color: v }); } },
+      { get: () => config.secondary_action_color || defaultConfig.secondary_action_color, set: v => { config.secondary_action_color = v; window.elementSdk.setConfig({ secondary_action_color: v }); } },
+    ],
+    borderables: [],
+    fontEditable: {
+      get: () => config.font_family || defaultConfig.font_family,
+      set: v => { config.font_family = v; window.elementSdk.setConfig({ font_family: v }); }
+    },
+    fontSizeable: {
+      get: () => config.font_size || defaultConfig.font_size,
+      set: v => { config.font_size = v; window.elementSdk.setConfig({ font_size: v }); }
+    }
+  }),
+  mapToEditPanelValues: (config) => new Map([
+    ['app_title', config.app_title || defaultConfig.app_title],
+    ['church_name', config.church_name || defaultConfig.church_name]
+  ])
+});
+
+// Data SDK
+const dataHandler = {
+  onDataChanged(data) {
+    allRecords = data;
+    updateHymnProgress();
+    if (document.getElementById('panelResults').style.display !== 'none' && !document.getElementById('panelResults').classList.contains('hidden')) {
+      renderResults();
+    }
+    if (document.getElementById('panelFinal').style.display !== 'none' && !document.getElementById('panelFinal').classList.contains('hidden')) {
+      renderFinalGrades();
+    }
+  }
+};
+
+(async () => {
+  const r = await window.dataSdk.init(dataHandler);
+  if (!r.isOk) console.error('Data SDK init failed');
+})();
+
+// Populate evaluators dropdown
+const selEval = document.getElementById('selEvaluator');
+EVALUATORS.forEach(e => { const o = document.createElement('option'); o.value = e; o.textContent = e; selEval.appendChild(o); });
+
+// Populate class filters
+[document.getElementById('filterClass'), document.getElementById('filterFinalClass')].forEach(sel => {
+  CLASSES.forEach(c => { const o = document.createElement('option'); o.value = c; o.textContent = c; sel.appendChild(o); });
+});
+
+// Populate evaluator filter
+const fEval = document.getElementById('filterEvaluator');
+EVALUATORS.forEach(e => { const o = document.createElement('option'); o.value = e; o.textContent = e; fEval.appendChild(o); });
+
+lucide.createIcons();
+
+// ========== FUNCTIONS ==========
+
+function showToast(msg, type = 'success') {
+  const c = document.getElementById('toastContainer');
+  const t = document.createElement('div');
+  t.className = `toast toast-${type}`;
+  t.textContent = msg;
+  c.appendChild(t);
+  setTimeout(() => t.remove(), 3000);
+}
+
+function showConfirm(msg, onYes) {
+  const c = document.getElementById('confirmContainer');
+  c.innerHTML = `
+    <div class="confirm-overlay" onclick="if(event.target===this)this.remove()">
+      <div class="confirm-box">
+        <p class="text-gray-200 mb-4 text-sm">${msg}</p>
+        <div class="flex gap-3 justify-center">
+          <button id="confirmYes" class="gold-bg text-gray-900 font-semibold px-6 py-2 rounded-xl text-sm">نعم</button>
+          <button id="confirmNo" class="bg-gray-600 text-white px-6 py-2 rounded-xl text-sm">إلغاء</button>
+        </div>
+      </div>
+    </div>`;
+  document.getElementById('confirmYes').onclick = () => { c.innerHTML = ''; onYes(); };
+  document.getElementById('confirmNo').onclick = () => { c.innerHTML = ''; };
+}
+
+function switchTab(tab) {
+  ['Evaluate','Results','Final'].forEach(t => {
+    const panel = document.getElementById('panel' + t);
+    const btn = document.getElementById('tab' + t);
+    if (t.toLowerCase() === tab.toLowerCase() || (tab === 'evaluate' && t === 'Evaluate') || (tab === 'results' && t === 'Results') || (tab === 'final' && t === 'Final')) {
+      panel.classList.remove('hidden');
+      btn.classList.add('active');
+      btn.classList.remove('text-gray-400');
+      btn.classList.add('text-yellow-200/80');
+    } else {
+      panel.classList.add('hidden');
+      btn.classList.remove('active');
+      btn.classList.remove('text-yellow-200/80');
+      btn.classList.add('text-gray-400');
+    }
+  });
+  if (tab === 'results') renderResults();
+  if (tab === 'final') renderFinalGrades();
+}
+
+function lookupStudent() {
+  const code = document.getElementById('inputCode').value.trim();
+  if (!code) { showToast('اكتب كود الدارس', 'error'); return; }
+  const s = STUDENTS.find(st => st.code === code);
+  if (!s) { showToast('لم يتم العثور على الدارس', 'error'); document.getElementById('studentCard').classList.add('hidden'); document.getElementById('hymnSection').classList.add('hidden'); currentStudent = null; return; }
+
+  currentStudent = s;
+  document.getElementById('studentInitial').textContent = s.name[0];
+  document.getElementById('studentNameDisplay').textContent = s.name;
+  document.getElementById('studentClassDisplay').textContent = s.class;
+  document.getElementById('studentCodeDisplay').textContent = 'كود: ' + s.code;
+  document.getElementById('studentCard').classList.remove('hidden');
+
+  // Populate hymns
+  const selH = document.getElementById('selHymn');
+  selH.innerHTML = '<option value="">— اختر اللحن —</option>';
+  const hymnsForClass = HYMNS_BY_CLASS[s.class] || [];
+  hymnsForClass.forEach(h => { const o = document.createElement('option'); o.value = h; o.textContent = h; selH.appendChild(o); });
+
+  document.getElementById('hymnSection').classList.remove('hidden');
+  document.getElementById('ratingSection').classList.add('hidden');
+  updateHymnProgress();
+  currentRatings = {};
+}
+
+function updateHymnProgress() {
+  if (!currentStudent) return;
+  const evaluator = document.getElementById('selEvaluator').value;
+  if (!evaluator) return;
+  const evaluated = allRecords.filter(r => r.student_code === currentStudent.code && r.evaluator_name === evaluator);
+  const hymnCount = HYMNS_BY_CLASS[currentStudent.class]?.length || 7;
+  const el = document.getElementById('hymnProgress');
+  el.textContent = `تم تقييم ${evaluated.length} من ${hymnCount} ألحان`;
+}
+
+function onHymnSelected() {
+  const hymn = document.getElementById('selHymn').value;
+  if (!hymn) { document.getElementById('ratingSection').classList.add('hidden'); return; }
+
+  currentRatings = {};
+  CRITERIA.forEach(c => currentRatings[c.key] = 0);
+
+  const container = document.getElementById('criteriaContainer');
+  container.innerHTML = '';
+
+  CRITERIA.forEach(cr => {
+    const div = document.createElement('div');
+    div.innerHTML = `
+      <label class="block text-xs text-gray-400 mb-2">${cr.label}</label>
+      <div class="flex gap-2 flex-wrap" id="rating_${cr.key}">
+        ${[0, 0.5, 1, 1.5, 2].map(v => `<button type="button" class="rating-btn rounded-lg px-3 py-2 text-sm" data-key="${cr.key}" data-val="${v}" onclick="setRating('${cr.key}', ${v}, this)">${v}</button>`).join('')}
+      </div>`;
+    container.appendChild(div);
+  });
+
+  document.getElementById('ratingSection').classList.remove('hidden');
+  updateHymnTotal();
+}
+
+function setRating(key, val, btn) {
+  currentRatings[key] = val;
+  const parent = btn.parentElement;
+  parent.querySelectorAll('.rating-btn').forEach(b => {
+    b.classList.toggle('active', parseFloat(b.dataset.val) === val);
+  });
+  updateHymnTotal();
+}
+
+function updateHymnTotal() {
+  const total = Object.values(currentRatings).reduce((a, b) => a + b, 0);
+  document.getElementById('hymnTotalDisplay').textContent = `${total} / 10`;
+}
+
+async function submitEvaluation() {
+  if (isSubmitting) return;
+  const evaluator = document.getElementById('selEvaluator').value;
+  const hymn = document.getElementById('selHymn').value;
+
+  if (!evaluator) { showToast('اختر الخادم المُقيِّم', 'error'); return; }
+  if (!currentStudent) { showToast('ابحث عن الدارس أولاً', 'error'); return; }
+  if (!hymn) { showToast('اختر اللحن', 'error'); return; }
+
+  // Check if already evaluated
+  const existing = allRecords.find(r => r.student_code === currentStudent.code && r.hymn_name === hymn && r.evaluator_name === evaluator);
+  if (existing) {
+    showConfirm('تم تقييم هذا اللحن مسبقاً. هل تريد تحديث التقييم؟', async () => {
+      await doUpdate(existing);
+    });
+    return;
+  }
+
+  if (allRecords.length >= 999) { showToast('تم الوصول للحد الأقصى (999 سجل)', 'error'); return; }
+
+  isSubmitting = true;
+  const btn = document.getElementById('btnSubmit');
+  btn.innerHTML = '<span class="spinner"></span> جاري الحفظ...';
+  btn.disabled = true;
+
+  const total = Object.values(currentRatings).reduce((a, b) => a + b, 0);
+  const record = {
+    student_code: currentStudent.code,
+    student_name: currentStudent.name,
+    student_class: currentStudent.class,
+    hymn_name: hymn,
+    evaluator_name: evaluator,
+    melody_mastery: currentRatings.melody_mastery || 0,
+    vocal_performance: currentRatings.vocal_performance || 0,
+    memorization: currentRatings.memorization || 0,
+    spiritual_understanding: currentRatings.spiritual_understanding || 0,
+    occasion_knowledge: currentRatings.occasion_knowledge || 0,
+    hymn_total: total,
+    timestamp: new Date().toISOString()
+  };
+
+  const result = await window.dataSdk.create(record);
+  isSubmitting = false;
+  btn.innerHTML = '<i data-lucide="check-circle" style="width:18px;height:18px"></i> حفظ التقييم';
+  btn.disabled = false;
+  lucide.createIcons();
+
+  if (result.isOk) {
+    showToast('تم حفظ التقييم بنجاح ✓');
+    document.getElementById('selHymn').value = '';
+    document.getElementById('ratingSection').classList.add('hidden');
+  } else {
+    showToast('حدث خطأ أثناء الحفظ', 'error');
+  }
+}
+
+async function doUpdate(existing) {
+  isSubmitting = true;
+  const btn = document.getElementById('btnSubmit');
+  btn.innerHTML = '<span class="spinner"></span> جاري التحديث...';
+  btn.disabled = true;
+
+  const total = Object.values(currentRatings).reduce((a, b) => a + b, 0);
+  const updated = { ...existing,
+    melody_mastery: currentRatings.melody_mastery || 0,
+    vocal_performance: currentRatings.vocal_performance || 0,
+    memorization: currentRatings.memorization || 0,
+    spiritual_understanding: currentRatings.spiritual_understanding || 0,
+    occasion_knowledge: currentRatings.occasion_knowledge || 0,
+    hymn_total: total,
+    timestamp: new Date().toISOString()
+  };
+
+  const result = await window.dataSdk.update(updated);
+  isSubmitting = false;
+  btn.innerHTML = '<i data-lucide="check-circle" style="width:18px;height:18px"></i> حفظ التقييم';
+  btn.disabled = false;
+  lucide.createIcons();
+
+  if (result.isOk) {
+    showToast('تم تحديث التقييم ✓');
+    document.getElementById('selHymn').value = '';
+    document.getElementById('ratingSection').classList.add('hidden');
+  } else {
+    showToast('حدث خطأ أثناء التحديث', 'error');
+  }
+}
+
+function renderResults() {
+  const classFilter = document.getElementById('filterClass').value;
+  const evalFilter = document.getElementById('filterEvaluator').value;
+
+  let data = [...allRecords];
+  if (classFilter) data = data.filter(r => r.student_class === classFilter);
+  if (evalFilter) data = data.filter(r => r.evaluator_name === evalFilter);
+
+  const container = document.getElementById('resultsTable');
+  if (data.length === 0) {
+    container.innerHTML = '<p class="text-center text-gray-500 py-8">لا توجد نتائج</p>';
+    return;
+  }
+
+  let html = `<table class="w-full text-xs">
+    <thead><tr class="text-yellow-200/60 border-b border-white/10">
+      <th class="py-2 px-2 text-right">الدارس</th>
+      <th class="py-2 px-2 text-right">الفصل</th>
+      <th class="py-2 px-2 text-right">اللحن</th>
+      <th class="py-2 px-2 text-right">الخادم</th>
+      <th class="py-2 px-2 text-center">إتقان</th>
+      <th class="py-2 px-2 text-center">أداء</th>
+      <th class="py-2 px-2 text-center">حفظ</th>
+      <th class="py-2 px-2 text-center">فهم</th>
+      <th class="py-2 px-2 text-center">مناسبة</th>
+      <th class="py-2 px-2 text-center">المجموع</th>
+    </tr></thead><tbody>`;
+
+  data.forEach(r => {
+    html += `<tr class="border-b border-white/5 hover:bg-white/5">
+      <td class="py-2 px-2">${r.student_name}</td>
+      <td class="py-2 px-2">${r.student_class}</td>
+      <td class="py-2 px-2">${r.hymn_name}</td>
+      <td class="py-2 px-2">${r.evaluator_name}</td>
+      <td class="py-2 px-2 text-center">${r.melody_mastery}</td>
+      <td class="py-2 px-2 text-center">${r.vocal_performance}</td>
+      <td class="py-2 px-2 text-center">${r.memorization}</td>
+      <td class="py-2 px-2 text-center">${r.spiritual_understanding}</td>
+      <td class="py-2 px-2 text-center">${r.occasion_knowledge}</td>
+      <td class="py-2 px-2 text-center font-bold text-yellow-200">${r.hymn_total}/10</td>
+    </tr>`;
+  });
+
+  html += '</tbody></table>';
+  container.innerHTML = html;
+}
+
+function renderFinalGrades() {
+  const classFilter = document.getElementById('filterFinalClass').value;
+  const container = document.getElementById('finalTable');
+
+  // Group by student
+  const studentMap = {};
+  allRecords.forEach(r => {
+    const key = r.student_code;
+    if (!studentMap[key]) studentMap[key] = { name: r.student_name, class: r.student_class, code: r.student_code, evaluations: {} };
+    // Group by hymn then evaluator
+    if (!studentMap[key].evaluations[r.hymn_name]) studentMap[key].evaluations[r.hymn_name] = {};
+    studentMap[key].evaluations[r.hymn_name][r.evaluator_name] = r.hymn_total;
+  });
+
+  let students = Object.values(studentMap);
+  if (classFilter) students = students.filter(s => s.class === classFilter);
+
+  if (students.length === 0) {
+    container.innerHTML = '<p class="text-center text-gray-500 py-8">لا توجد نتائج نهائية</p>';
+    return;
+  }
+
+  let html = `<table class="w-full text-xs">
+    <thead><tr class="text-yellow-200/60 border-b border-white/10">
+      <th class="py-2 px-2 text-right">الدارس</th>
+      <th class="py-2 px-2 text-right">الفصل</th>
+      <th class="py-2 px-2 text-center">عدد الألحان</th>
+      <th class="py-2 px-2 text-center">متوسط الخادمين</th>
+      <th class="py-2 px-2 text-center">الدرجة النهائية /30</th>
+    </tr></thead><tbody>`;
+
+  students.forEach(s => {
+    const hymnCount = HYMNS_BY_CLASS[s.class]?.length || 7;
+    const hymns = Object.keys(s.evaluations);
+    let totalScore = 0;
+    let evaluatedCount = 0;
+
+    hymns.forEach(h => {
+      const evals = Object.values(s.evaluations[h]);
+      if (evals.length > 0) {
+        const avg = evals.reduce((a, b) => a + b, 0) / evals.length;
+        totalScore += avg;
+        evaluatedCount++;
+      }
+    });
+
+    // Calculate final grade: (average of all hymn scores / 10) × 30
+    const finalGrade = evaluatedCount > 0 ? ((totalScore / evaluatedCount / 10) * 30).toFixed(1) : '0';
+    const pct = evaluatedCount > 0 ? ((parseFloat(finalGrade) / 30) * 100) : 0;
+    const barColor = pct >= 70 ? '#22c55e' : pct >= 50 ? '#eab308' : '#ef4444';
+
+    html += `<tr class="border-b border-white/5 hover:bg-white/5">
+      <td class="py-3 px-2 font-semibold">${s.name}</td>
+      <td class="py-3 px-2">${s.class}</td>
+      <td class="py-3 px-2 text-center">${evaluatedCount}/${hymnCount}</td>
+      <td class="py-3 px-2 text-center">${evaluatedCount > 0 ? (totalScore / evaluatedCount).toFixed(1) : '—'}/10</td>
+      <td class="py-3 px-2">
+        <div class="flex items-center gap-2 justify-center">
+          <div class="w-16 h-2 rounded-full bg-white/10 overflow-hidden">
+            <div class="h-full rounded-full" style="width:${pct}%;background:${barColor}"></div>
+          </div>
+          <span class="font-bold text-yellow-200">${finalGrade}</span>
+        </div>
+      </td>
+    </tr>`;
+  });
+
+  html += '</tbody></table>';
+  container.innerHTML = html;
+}
+</script>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9f1dd2e382eeb870',t:'MTc3NzEyNTEwMC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
